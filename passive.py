@@ -48,32 +48,34 @@ if __name__ == "__main__":
     # Passos iniciais de conexão do lado passivo
     sock = socket.socket()
     sock.bind(('',4500))
-    sock.listen(1)
-    new_sock, address = sock.accept()
-
     while True:
-        # Recebo o comando e divido ele
-        message = new_sock.recv(1024)   
-        message = str(message,encoding="utf-8")
-        message = message.split()
+        # Sempre ouvindo
+        sock.listen(1)
+        new_sock, address = sock.accept()
 
-        if message[0] == "close":
-            break
+        while True:
+            # Recebo o comando e divido ele
+            message = new_sock.recv(1024)   
+            message = str(message,encoding="utf-8")
+            message = message.split()
 
-        elif message[0] == "read":
-            # Comando é read <nome do arquivo>, se o nome do arquivo não vem, informamos o usuário
-            if len(message) == 1:
-                new_sock.send(bytes("Incorrect command usage",encoding='utf-8'))
+            if message[0] == "close":
+                break
 
+            elif message[0] == "read":
+                # Comando é read <nome do arquivo>, se o nome do arquivo não vem, informamos o usuário
+                if len(message) == 1:
+                    new_sock.send(bytes("Incorrect command usage",encoding='utf-8'))
+
+                else:
+                    file_amount = len(message[1:])
+                    print("Number of files to be checked: " + str(file_amount))
+                    for i in range (1,file_amount + 1):
+                        result = database_layer(message[i])
+                        result = processing_layer(result) if result != 0 else "File not found!"
+                        new_sock.send(bytes(result,encoding='utf-8'))
+
+            # Comando não reconhecido, avisamos o usuário
             else:
-                file_amount = len(message[1:])
-                print("Number of files to be checked: " + str(file_amount))
-                for i in range (1,file_amount + 1):
-                    result = database_layer(message[i])
-                    result = processing_layer(result) if result != 0 else "File not found!"
-                    new_sock.send(bytes(result,encoding='utf-8'))
-
-        # Comando não reconhecido, avisamos o usuário
-        else:
-            new_sock.send(bytes("Unknown command, use read or close",encoding='utf-8'))
+                new_sock.send(bytes("Unknown command, use read or close",encoding='utf-8'))
 
