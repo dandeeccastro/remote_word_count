@@ -11,11 +11,26 @@ if __name__ == "__main__":
         command = input()
         sock.send(bytes(command,encoding='utf-8'))
 
+        command = command.split()
         # Fecho caso seja o comando de encerramento
-        if command == "close":
+        if command[0] == "close":
             break
 
-        # Recebo a mensagem caso o comando seja válido
-        message = sock.recv(1024)
-        message = str(message,encoding="utf-8")
-        print(message)
+        # Checando o número de arquivos enviados
+        elif command[0] == "read":
+            number_of_responses = len(command[1:])
+            if number_of_responses == 0:
+                message = sock.recv(1024)
+                message = str(message, encoding='utf-8')
+                print(message)
+            else:
+                for i in range(0,number_of_responses):
+                    message = sock.recv(1024)
+                    message = str(message, encoding='utf-8')
+                    print(message)
+
+        
+        else:
+            message = sock.recv(1024)
+            message = str(message, encoding='utf-8')
+            print(message)

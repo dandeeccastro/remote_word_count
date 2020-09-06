@@ -28,7 +28,7 @@ def processing_layer(file_handler):
     unique.sort(key=lambda a: a["count"], reverse=True)
 
     # Gerando a string final com palavra e contagem, separados por tab
-    result_string = ''
+    result_string = file_handler.name + '\n' 
     for item in unique:
         result_string += item["word"] + '\t' + str(item["count"]) + '\n'
 
@@ -66,9 +66,12 @@ if __name__ == "__main__":
                 new_sock.send(bytes("Incorrect command usage",encoding='utf-8'))
 
             else:
-                result = database_layer(message[1])
-                result = processing_layer(result) if result != 0 else "File not found!"
-                new_sock.send(bytes(result,encoding='utf-8'))
+                file_amount = len(message[1:])
+                print("Number of files to be checked: " + str(file_amount))
+                for i in range (1,file_amount + 1):
+                    result = database_layer(message[i])
+                    result = processing_layer(result) if result != 0 else "File not found!"
+                    new_sock.send(bytes(result,encoding='utf-8'))
 
         # Comando não reconhecido, avisamos o usuário
         else:
