@@ -1,5 +1,89 @@
 import socket 
 import re
+import select
+import sys
+import multiprocessing
+
+# Variáveis globais
+inputs = [sys.stdin]
+connections = dict()
+HOST = "127.0.0.1"
+PORT = 10000
+MAX_CLIENTS = 5 
+
+def main():
+    sock = start_server()
+    clients = []
+    while True:
+        read, write, execute = select.select(inputs,[],[])
+        for process in read:
+            if process == sock:
+                clisock, addr = accept_connection(sock)
+                print(str(addr) + " has connected")
+                client = multiprocessing.Process(target=handle_request, args=(clisock,addr))
+                client.start()
+                clients.append(client)
+            elif process == sys.stdin:
+                print("Admin command detected")
+                command = input()
+                if command == "close":
+                    for c in clients:
+                        c.join()
+                    sock.close()
+                    sys.exit()
+
+def start_server():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # usando ipv4 e TCP
+    sock.bind((HOST,PORT))
+    sock.listen(MAX_CLIENTS)
+    sock.setblocking(False)
+    inputs.append(sock)
+    return sock
+
+def accept_connection(clisock):
+    new_sock, addr = clisock.accept()
+    connections[new_sock] = addr
+    return new_sock, addr
+
+def handle_request(clisock, addr):
+    message = clisock.recv(1024)
+    if not message:
+        print(str(addr) + " closed connection")
+        clisock.close()
+        return
+    else:
+        message = str(message, encoding="utf-8")
+        message = message.split()
+        execute_command(message, clisock)
+        
+def execute_command(message,sock):
+    if message[0] == "read":
+        print("read command detected")
+        if len(message) == 1:
+            sock.send(bytes("[server]: Incorrent command usage", encoding="utf-8"))
+        else:
+            file_amount = len(message[1:])
+            for i in range(1,file_amount + 1):
+                result = database_layer(message[i])
+                result = processing_layer(result) if result != 0 else "[server] File not found!"
+                sock.send(bytes(result,encoding='utf-8'))
+
+    elif message[0] == "echo":
+        echo_message = ' '.join(message[1:])
+        print(str(connections[sock]) + " " + echo_message)
+        sock.send(bytes(echo_message,encoding='utf-8'))
+
+    else:
+        sock.send(bytes("[server] Command doesn't exist", encoding="utf-8"))
+
+# Retorna o objeto de arquivo se ele existe, zero se não existe
+def database_layer(file_name):
+    try:
+        file_handler = open(file_name, "r")
+        return file_handler
+
+    except Exception:
+        return 0
 
 def processing_layer(file_handler):
     words = [] # array que terá todas as palavras do texto
@@ -28,54 +112,10 @@ def processing_layer(file_handler):
     unique.sort(key=lambda a: a["count"], reverse=True)
 
     # Gerando a string final com palavra e contagem, separados por tab
-    result_string = file_handler.name + '\n' 
+    result_string = "[server] Word count for " + file_handler.name + '\n' 
     for item in unique:
         result_string += item["word"] + '\t' + str(item["count"]) + '\n'
 
     return result_string
 
-# Retorna o objeto de arquivo se ele existe, zero se não existe
-def database_layer(file_name):
-    try:
-        file_handler = open(file_name, "r")
-        return file_handler
-
-    except Exception:
-        return 0
-
-if __name__ == "__main__":
-
-    # Passos iniciais de conexão do lado passivo
-    sock = socket.socket()
-    sock.bind(('',4500))
-    while True:
-        # Sempre ouvindo
-        sock.listen(1)
-        new_sock, address = sock.accept()
-
-        while True:
-            # Recebo o comando e divido ele
-            message = new_sock.recv(1024)   
-            message = str(message,encoding="utf-8")
-            message = message.split()
-
-            if message[0] == "close":
-                break
-
-            elif message[0] == "read":
-                # Comando é read <nome do arquivo>, se o nome do arquivo não vem, informamos o usuário
-                if len(message) == 1:
-                    new_sock.send(bytes("Incorrect command usage",encoding='utf-8'))
-
-                else:
-                    file_amount = len(message[1:])
-                    print("Number of files to be checked: " + str(file_amount))
-                    for i in range (1,file_amount + 1):
-                        result = database_layer(message[i])
-                        result = processing_layer(result) if result != 0 else "File not found!"
-                        new_sock.send(bytes(result,encoding='utf-8'))
-
-            # Comando não reconhecido, avisamos o usuário
-            else:
-                new_sock.send(bytes("Unknown command, use read or close",encoding='utf-8'))
-
+main()

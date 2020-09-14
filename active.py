@@ -1,36 +1,42 @@
 import socket 
+import sys
 
-if __name__ == "__main__":
+HOST = "127.0.0.1"
+PORT = 10000 
 
-    # Iniciando conexão no lado passivo
-    sock = socket.socket()
-    sock.connect(("localhost",4500))
-
+def main():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((HOST,PORT))
     while True:
-        # Envio o comando
         command = input()
-        sock.send(bytes(command,encoding='utf-8'))
+        handleCommand(sock, command)
 
-        command = command.split()
-        # Fecho caso seja o comando de encerramento
-        if command[0] == "close":
-            break
+def handleCommand(sock, command):
+    command = command.split()
 
-        # Checando o número de arquivos enviados
-        elif command[0] == "read":
-            number_of_responses = len(command[1:])
-            if number_of_responses == 0:
-                message = sock.recv(1024)
-                message = str(message, encoding='utf-8')
-                print(message)
-            else:
-                for i in range(0,number_of_responses):
-                    message = sock.recv(1024)
-                    message = str(message, encoding='utf-8')
-                    print(message)
+    if command[0] == "close":
+        sock.close()
+        sys.exit()
 
-        
-        else:
+    elif command[0] == "read":
+        sock.send(bytes(' '.join(command),encoding='utf-8'))
+        number_of_responses = len(command[1:])
+        print(number_of_responses)
+
+        if (number_of_responses <= 1):
             message = sock.recv(1024)
             message = str(message, encoding='utf-8')
             print(message)
+
+        else:
+            for i in range(0,number_of_responses):
+                message = sock.recv(1024)
+                message = str(message, encoding='utf-8')
+                print(message)
+    else:
+        sock.send(bytes(' '.join(command),encoding='utf-8'))
+        message = sock.recv(1024)
+        message = str(message, encoding='utf-8')
+        print(message)
+
+main()
