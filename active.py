@@ -4,6 +4,7 @@ import sys
 HOST = "127.0.0.1"
 PORT = 10000 
 
+# Inicializa o socket e lida com comandos usando handleCommand
 def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((HOST,PORT))
@@ -11,6 +12,7 @@ def main():
         command = input()
         handleCommand(sock, command)
 
+# Seta a espera do comando de read close e echo da forma correta
 def handleCommand(sock, command):
     command = command.split()
 
@@ -18,6 +20,7 @@ def handleCommand(sock, command):
         sock.close()
         sys.exit()
 
+    # Espera pela quantidade de respostas por arquivo OU uma resposta para um arquivo ou erro
     elif command[0] == "read":
         sock.send(bytes(' '.join(command),encoding='utf-8'))
         number_of_responses = len(command[1:])
